@@ -11,6 +11,8 @@
 
 
   <modules>
+    <module>ispn-xsite-test</module>
+    <module>ispn-xsite-plugin</module>
   </modules>
 
   <repositories>
