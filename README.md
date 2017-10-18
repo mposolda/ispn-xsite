@@ -1,5 +1,5 @@
-ispn Xsite
-==========
+Infinispan Xsite
+================
 
 Test for the infinispan behaviour / probably bug. If there are 2 infinispan servers in different sites and with caches connected through
 the SYNC "backup" to each other, then deadlock happen when there is an attempt to update same cache record (record of same key) concurrently
@@ -53,7 +53,6 @@ Setup
 
 ````
 <replicated-cache-configuration name="sessions-cfg" mode="SYNC" start="EAGER" batching="false">
-    <transaction mode="NON_XA" locking="PESSIMISTIC"/>
     <backups>
         <backup site="NYC" failure-policy="FAIL" strategy="SYNC" enabled="true"/>
     </backups>
@@ -119,12 +118,58 @@ EXPECTED:
 - Consistency with no write skews (Priority 2). Which means that Assert is passing
 
 CURRENT RESULT:
-- Deadlock and Assert failing
+- Deadlock because BackupSender transaction on both sites owns the lock for key "123", but BackupReceiver on both sites waiting for the lock for entry "123".
+None of the parties in both sites can't continue. Also the Assert failing (consistency is not there).
+The test usually takes around 80-100 seconds with 10 ITERATION_PER_WORKER. More info in the JIRA TODO including thread dumps.
+
+- I've tried with non-transactional caches, but same (or similar) results
+
+- In the JDG log, there are exceptions like:
+
+````
+17:00:58,574 ERROR [org.infinispan.transaction.impl.TransactionCoordinator] (HotRodServerHandler-8-13) ISPN000097: Error while processing a prepare in a single-phase transaction: The local cache sessions failed to backup data to the remote sites:
+NYC: org.infinispan.util.concurrent.TimeoutException: Timed out after 10 seconds waiting for a response from NYC (sync, timeout=10000)
+
+	at org.infinispan.xsite.BackupSenderImpl.processFailedResponses(BackupSenderImpl.java:227)
+	at org.infinispan.xsite.BackupSenderImpl.processResponses(BackupSenderImpl.java:132)
+	at org.infinispan.interceptors.xsite.BaseBackupInterceptor.lambda$processBackupResponse$0(BaseBackupInterceptor.java:61)
+	at org.infinispan.interceptors.xsite.BaseBackupInterceptor$$Lambda$306/1187307446.accept(Unknown Source)
+	at org.infinispan.interceptors.BaseAsyncInterceptor.invokeNextThenAccept(BaseAsyncInterceptor.java:108)
+	at org.infinispan.interceptors.xsite.BaseBackupInterceptor.processBackupResponse(BaseBackupInterceptor.java:60)
+
+````
 
 
 Patch the JDG
 =============
 
+1) Stop both JDG and update cache-container in clustered.xml on both JDG. Add the `jndi-attribute` to it:
+
+````
+<cache-container name="clustered" default-cache="default" statistics="true" jndi-name="infinispan/clustered">
+````
+
+2) Run both JDG servers with same parameters as above.
+
+3) Deploy the plugin to both running JDG containers.
+
+````
+cd ispn-xsite-plugin/
+mvn clean install
+cp target/ispn-xsite-plugin-0.1-SNAPSHOT.jar $JDG1_HOME/standalone/deployments/
+cp target/ispn-xsite-plugin-0.1-SNAPSHOT.jar $JDG2_HOME/standalone/deployments
+````
+
+There should be message like this on both containers:
+
+````
+17:47:00,407 ERROR [stderr] (MSC service thread 1-8) Injecting custom interceptors to cache: sessions
+17:47:00,412 ERROR [stderr] (MSC service thread 1-8) Decorated backupReceiver for site NYC
+````
+
+4) Run the test:
+
+TODO: Results expected
 
 
 
