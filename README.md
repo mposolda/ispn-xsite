@@ -124,15 +124,15 @@ In shortcut, none of the parties in both sites can't continue. The deadlock is i
 this exceptions in the server.log:
 
 ````
-17:00:58,574 ERROR [org.infinispan.transaction.impl.TransactionCoordinator] (HotRodServerHandler-8-13) ISPN000097: Error while processing a prepare in a single-phase transaction: The local cache sessions failed to backup data to the remote sites:
-NYC: org.infinispan.util.concurrent.TimeoutException: Timed out after 10 seconds waiting for a response from NYC (sync, timeout=10000)
+20:30:15,461 ERROR [org.infinispan.interceptors.impl.InvocationContextInterceptor] (HotRodServerHandler-8-32) ISPN000136: Error executing command ReplaceCommand, writing keys [[B0x033E03313233]: The local cache sessions failed to backup data to the remote sites:
+LON: org.infinispan.util.concurrent.TimeoutException: Timed out after 10 seconds waiting for a response from LON (sync, timeout=10000)
 
 	at org.infinispan.xsite.BackupSenderImpl.processFailedResponses(BackupSenderImpl.java:227)
 	at org.infinispan.xsite.BackupSenderImpl.processResponses(BackupSenderImpl.java:132)
-	at org.infinispan.interceptors.xsite.BaseBackupInterceptor.lambda$processBackupResponse$0(BaseBackupInterceptor.java:61)
-	at org.infinispan.interceptors.xsite.BaseBackupInterceptor$$Lambda$306/1187307446.accept(Unknown Source)
+	at org.infinispan.xsite.BackupSenderImpl.processResponses(BackupSenderImpl.java:124)
+	at org.infinispan.interceptors.xsite.NonTransactionalBackupInterceptor.lambda$handleSingleKeyWriteCommand$0(NonTransactionalBackupInterceptor.java:58)
+	at org.infinispan.interceptors.xsite.NonTransactionalBackupInterceptor$$Lambda$303/1579852903.accept(Unknown Source)
 	at org.infinispan.interceptors.BaseAsyncInterceptor.invokeNextThenAccept(BaseAsyncInterceptor.java:108)
-	at org.infinispan.interceptors.xsite.BaseBackupInterceptor.processBackupResponse(BaseBackupInterceptor.java:60)
 
 ````
 
