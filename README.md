@@ -112,19 +112,16 @@ cd ispn-xsite-test
 mvn test -Dtest=ConcurrentReplaceTest
 ````
 
-EXPECTED:
-- No deadlocks on the JDG side (Priority 1)
+CURRENT TEST RESULT
+-------------------
 
-- Consistency with no write skews (Priority 2). Which means that Assert is passing
+- There are deadlocks on both JDG servers because 2 concurrent "ReplaceCommand" operations triggered on both sites concurrently owns
+the lock for key "123" each on their own site. And there is BackupSender sending the request to the other site. But backupReceiver
+on the opposite site to the BackupSender site can't acquire the lock for "123" because the lock is acquired by the concurrent "ReplaceCommand"
+operation and this "ReplaceCommand" is already stucked on BackupSender.
 
-CURRENT RESULT:
-- Deadlock because BackupSender transaction on both sites owns the lock for key "123", but BackupReceiver on both sites waiting for the lock for entry "123".
-None of the parties in both sites can't continue. Also the Assert failing (consistency is not there).
-The test usually takes around 80-100 seconds with 10 ITERATION_PER_WORKER. More info in the JIRA TODO including thread dumps.
-
-- I've tried with non-transactional caches, but same (or similar) results
-
-- In the JDG log, there are exceptions like:
+In shortcut, none of the parties in both sites can't continue. The deadlock is interrupted after 10 seconds BackupSender timeout. This means
+this exceptions in the server.log:
 
 ````
 17:00:58,574 ERROR [org.infinispan.transaction.impl.TransactionCoordinator] (HotRodServerHandler-8-13) ISPN000097: Error while processing a prepare in a single-phase transaction: The local cache sessions failed to backup data to the remote sites:
@@ -140,13 +137,39 @@ NYC: org.infinispan.util.concurrent.TimeoutException: Timed out after 10 seconds
 ````
 
 
+- More details including thread-dumps of JDG servers during deadlocks is in the JIRA.
+
+- Due the deadlocks, the test usually takes around 100-200 seconds with 10 ITERATION_PER_WORKER.
+
+- I've tried with transactional caches, but there same (or similar) results
+
+
+EXPECTED TEST RESULT
+--------------------
+- No deadlocks on the JDG side (Priority 1)
+
+- Consistency with no write skews (Priority 2). Which would mean that Assert in the test is passing
+
+
+
 Patch the JDG
 =============
+
+There is workaround to avoid deadlocks on JDG side, but deploying custom plugin there and tweak infinispan behaviour:
 
 1) Stop both JDG and update cache-container in clustered.xml on both JDG. Add the `jndi-attribute` to it:
 
 ````
 <cache-container name="clustered" default-cache="default" statistics="true" jndi-name="infinispan/clustered">
+````
+
+2) Also in clustered.xml add the `filter-spec` to the console-handler in logging subsystem. We expect that exceptions can happen and
+we handle them on the application side. We don't need the server.log swamped with many "expected" exception stacktraces.
+
+````
+<console-handler name="CONSOLE">
+    <level name="INFO"/>
+    <filter-spec value="not(match(&quot;ISPN000071: Caught exception when handling command&quot;))"/>
 ````
 
 2) Run both JDG servers with same parameters as above.
@@ -160,16 +183,24 @@ cp target/ispn-xsite-plugin-0.1-SNAPSHOT.jar $JDG1_HOME/standalone/deployments/
 cp target/ispn-xsite-plugin-0.1-SNAPSHOT.jar $JDG2_HOME/standalone/deployments
 ````
 
-There should be message like this on both containers:
+There should be message similar to this on both containers:
 
 ````
 17:47:00,407 ERROR [stderr] (MSC service thread 1-8) Injecting custom interceptors to cache: sessions
 17:47:00,412 ERROR [stderr] (MSC service thread 1-8) Decorated backupReceiver for site NYC
 ````
 
-4) Run the test:
+TODO: Plugin needs re-deploy after every restart currently.
 
-TODO: Results expected
+
+4) Run the ConcurrentReplaceTest again.
+
+RESULTS:
+- No deadlocks
+
+- Consistency is not 100% (test is failing on my laptop in around 20% of runs as some update is lost). But that's acceptable.
+
+Currently especially deadlocks are the main issue.
 
 
 

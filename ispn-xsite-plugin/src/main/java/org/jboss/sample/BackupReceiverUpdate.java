@@ -1,6 +1,5 @@
 package org.jboss.sample;
 
-import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.util.List;
 
@@ -17,6 +16,10 @@ import org.infinispan.xsite.statetransfer.XSiteStatePushCommand;
 import org.infinispan.xsite.statetransfer.XSiteStateTransferControlCommand;
 
 /**
+ * Updates BackupReceiver to use ZERO_LOCK_ACQUISITION_TIMEOUT flag. This means that backup fails immediately if lock is owned by
+ * someone else and it won't wait for it (that was the behaviour causing deadlocks)
+ *
+ *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
 class BackupReceiverUpdate {
@@ -71,7 +74,7 @@ class BackupReceiverUpdate {
             if (decoratedSiteUpdater == null) {
                 synchronized (this) {
                     if (decoratedSiteUpdater == null) {
-                        // We want BaseBackupReceiver to FAIL if it can't acquire lock immediatelly. This is to avoid deadlock as there can be
+                        // We want BaseBackupReceiver to FAIL if it can't acquire lock immediately. This is to avoid deadlock as there can be
                         // an update in progress on local site too
                         Cache decoratedCache = new DecoratedCache(getCache().getAdvancedCache(), Flag.ZERO_LOCK_ACQUISITION_TIMEOUT);
 

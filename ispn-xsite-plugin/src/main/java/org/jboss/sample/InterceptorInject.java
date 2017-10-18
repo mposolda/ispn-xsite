@@ -14,7 +14,8 @@ import org.infinispan.util.concurrent.TimeoutException;
 import org.infinispan.xsite.BackupFailureException;
 
 /**
- * Workaround for infinispan always logging the exception in InvocationContextInterceptor
+ * Workaround for infinispan always logging the exception in InvocationContextInterceptor. We want to filter
+ * some exceptions, which we expect.
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
@@ -63,7 +64,7 @@ class InterceptorInject {
                 return invokeNextInterceptor(ctx, command);
             } catch (BackupFailureException backupFailure) {
                 // Failure in BackupSender
-                System.err.println("Exception handled: " + backupFailure.toString());
+                System.err.println("ISPN-XSITE-PLUGIN: Exception handled: " + backupFailure.toString());
                 exceptionHolder.set(backupFailure);
                 return null;
             } catch (TimeoutException te) {
@@ -71,7 +72,7 @@ class InterceptorInject {
                 if (command instanceof FlagAffectedCommand) {
                     boolean hasZeroLockAcquisitionTimeout = ((FlagAffectedCommand) command).hasFlag(Flag.ZERO_LOCK_ACQUISITION_TIMEOUT);
                     if (hasZeroLockAcquisitionTimeout) {
-                        //System.err.println("Exception handled: " + te.getMessage());
+                        System.err.println("ISPN-XSITE-PLUGIN: Exception handled: " + te.getMessage());
                         exceptionHolder.set(te);
                         return null;
                     }

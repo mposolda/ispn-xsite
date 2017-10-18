@@ -39,9 +39,9 @@ public class BasicCacheFilterFactory implements CacheEventFilterFactory {
 
             Cache sessions = cacheMgr.getCache("sessions");
 
-            InterceptorInject.checkInterceptors(sessions);
-
             BackupReceiverUpdate.updateBackupReceiver(sessions);
+
+            InterceptorInject.checkInterceptors(sessions);
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException(e);
