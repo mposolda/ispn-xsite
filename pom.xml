@@ -9,6 +9,9 @@
   <name>Ispn-XSite-Parent</name>
   <description>Ispn-XSite-Parent</description>
 
+  <properties>
+    <ispn.version>8.1.0.Final</ispn.version>
+  </properties>
 
   <modules>
     <module>ispn-xsite-test</module>
